@@ -9,4 +9,9 @@
             <directory>tests/unit</directory>
         </testsuite>
     </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">source/community.applications/usr/local/emhttp/plugins/community.applications/include</directory>
+        </include>
+    </source>
 </phpunit>
