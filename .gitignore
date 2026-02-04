@@ -56,9 +56,13 @@ composer.lock
 
 # PHPUnit
 .phpunit.cache/
+coverage-report/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Temp files
+~
