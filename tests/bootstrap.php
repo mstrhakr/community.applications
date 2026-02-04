@@ -62,47 +62,83 @@ foreach ($iterator as $file) {
     }
 }
 
-// Mock /etc/unraid-version - required by exec.php
-UnraidStreamWrapper::addMockContent(
-    '/etc/unraid-version',
-    "version=\"7.0.0\"\n"
-);
-
-// Mock /var/run/dockerd.pid for Docker running check
-UnraidStreamWrapper::addMockContent(
-    '/var/run/dockerd.pid',
-    "12345\n"
-);
-
-// Mock dynamix config
+// Mock dynamix config - required BEFORE paths.php is loaded
 FunctionMocks::setPluginConfig('dynamix', [
     'theme' => 'black',
     'display' => 'array',
 ]);
 
-// Set $docroot which CA uses extensively
-$GLOBALS['docroot'] = '/usr/local/emhttp';
-$_SERVER['DOCUMENT_ROOT'] = '/usr/local/emhttp';
-$_SERVER['REQUEST_URI'] = 'docker/apps';
-
-// Set up temp directory for CA
-$caTempDir = sys_get_temp_dir() . '/community.applications/tempFiles';
-if (!is_dir($caTempDir)) {
-    mkdir($caTempDir, 0777, true);
-}
-
-// Define caPaths global that helpers.php expects
-$GLOBALS['caPaths'] = [
-    'tempFiles' => $caTempDir,
-    'flashDrive' => sys_get_temp_dir() . '/ca-flash',
+// Set up dynamixSettings global which paths.php uses
+$GLOBALS['dynamixSettings'] = [
+    'theme' => 'black',
+    'display' => 'array',
 ];
 
-// Define caSettings global
+// Set $docroot which CA uses extensively
+// Must be set as both GLOBALS and local variable because exec.php uses: $docroot = $docroot ?? ...
+$docroot = '/usr/local/emhttp';
+$GLOBALS['docroot'] = $docroot;
+$_SERVER['DOCUMENT_ROOT'] = $docroot;
+$_SERVER['REQUEST_URI'] = 'docker/apps';
+
+// Pre-create the CA logs directory and log file
+// This prevents the debug() infinite loop (debug() calls ca_plugin() on first init)
+$caLogsDir = '/tmp/CA_logs';
+$logFile = "$caLogsDir/ca_log.txt";
+if (!is_dir($caLogsDir)) {
+    mkdir($caLogsDir, 0777, true);
+}
+if (!file_exists($logFile)) {
+    file_put_contents($logFile, "Test log initialized\n");
+}
+
+// Create required temp directories that exec.php expects
+$tempDirs = [
+    '/tmp/CA_logs',
+    '/tmp/community.applications/tempFiles',
+    '/tmp/community.applications/templates-community',
+];
+foreach ($tempDirs as $dir) {
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0777, true);
+    }
+}
+
+// Include paths.php first to set up $caPaths - this is required before helpers.php
+require_once '/usr/local/emhttp/plugins/community.applications/include/paths.php';
+
+// Debug: verify $caPaths was set
+if (!isset($caPaths)) {
+    throw new \RuntimeException('paths.php did not set $caPaths');
+}
+// Ensure it's in GLOBALS
+$GLOBALS['caPaths'] = $caPaths;
+
+// Define caSettings global - matches what parse_plugin_cfg returns merged with defaults
+// This must be set because helpers.php functions use it
 $GLOBALS['caSettings'] = [
     'maxPerPage' => 24,
     'dockerSearch' => 'yes',
     'unRaidVersion' => '7.0.0',
+    'dockerRunning' => true,
+    'favourite' => '',
+    'hideIncompatible' => 'false',
+    'hideDeprecated' => 'false',
+    'startup' => 'random',
+    'iconSize' => '96',
     'dev' => 'no',
+    'dynamixTheme' => 'black',
 ];
 
-// Note: debug() is defined in helpers.php, so we don't define it here
+// Define sortOrder global - default sort state
+$GLOBALS['sortOrder'] = [
+    'sortBy' => 'Name',
+    'sortDir' => 'Up',
+];
+
+// Now include helpers.php which uses $caPaths
+require_once '/usr/local/emhttp/plugins/community.applications/include/helpers.php';
+
+// Note: All CA functions from helpers.php are now available for testing
+// exec.php is NOT included by default because it has too many side effects
+// Tests that need exec.php functions should include it themselves with proper setup
