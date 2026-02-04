@@ -12,14 +12,21 @@ The One Stop Shop for all applications for Unraid®.
 
 This project uses [PHPUnit](https://phpunit.de/) for testing with the [plugin-tests](https://github.com/mstrhakr/plugin-tests) framework.
 
+**Note:** CA source files use PHP short open tags (`<?`), which requires `short_open_tag=On`.
+
 ```bash
 # Install dependencies
 composer install
 
-# Run tests
-composer test
-# or
-vendor/bin/phpunit --testdox
+# Run tests (uses wrapper that enables short_open_tag)
+./bin/phpunit        # Unix/Linux/macOS
+.\bin\phpunit.cmd    # Windows
+
+# With verbose output
+./bin/phpunit --testdox
+
+# With coverage report
+./bin/phpunit --coverage-text
 ```
 
 ### Test Framework
@@ -31,4 +38,4 @@ The framework provides:
 - Mock globals (`$var`, `$disks`, `$shares`)
 - File path virtualization for testing without the actual Unraid® environment
 
-See `tests/bootstrap.php` for the test setup configuration.
+See `tests/bootstrap.php` for the test setup configuration and `tests/TESTING_ROADMAP.md` for the testing plan.

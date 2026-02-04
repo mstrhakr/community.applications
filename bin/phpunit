@@ -1,0 +1,3 @@
+#!/bin/bash
+# Run PHPUnit with short_open_tag enabled (required for CA source files)
+php -d short_open_tag=On "$(dirname "$0")/../vendor/bin/phpunit" "$@"

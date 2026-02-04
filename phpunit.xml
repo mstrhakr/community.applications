@@ -4,6 +4,9 @@
          bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache">
+    <php>
+        <ini name="short_open_tag" value="On"/>
+    </php>
     <testsuites>
         <testsuite name="Community Applications Tests">
             <directory>tests/unit</directory>
