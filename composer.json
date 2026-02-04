@@ -1,0 +1,17 @@
+{
+    "name": "squidly271/community-applications-tests",
+    "description": "Tests for Community Applications plugin",
+    "type": "project",
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PluginTests\\": "tests/framework/src/php/",
+            "CommunityApplications\\Tests\\": "tests/unit/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
