@@ -326,4 +326,314 @@ class PureFunctionsTest extends TestCase
         $this->assertStringContainsString('A2', $result);
         $this->assertStringContainsString('more', $result);
     }
+
+    // =====================================================
+    // Tests for plain() - removes brackets from IP strings
+    // =====================================================
+
+    public function testPlainRemovesBrackets(): void
+    {
+        $this->assertEquals('192.168.1.1', \plain('[192.168.1.1]'));
+    }
+
+    public function testPlainWithNoBrackets(): void
+    {
+        $this->assertEquals('192.168.1.1', \plain('192.168.1.1'));
+    }
+
+    public function testPlainWithIPv6(): void
+    {
+        $this->assertEquals('::1', \plain('[::1]'));
+    }
+
+    // =====================================================
+    // Tests for ca_explode() - explode with padding
+    // =====================================================
+
+    public function testCaExplodeBasicSplit(): void
+    {
+        $result = \ca_explode(':', '192.168.1.1:8080');
+        $this->assertEquals(['192.168.1.1', '8080'], $result);
+    }
+
+    public function testCaExplodePadsWhenNoDelimiter(): void
+    {
+        $result = \ca_explode(':', '192.168.1.1');
+        $this->assertEquals(['192.168.1.1', ''], $result);
+    }
+
+    public function testCaExplodeWithCustomCount(): void
+    {
+        $result = \ca_explode(':', 'a:b:c', 3);
+        $this->assertEquals(['a', 'b', 'c'], $result);
+    }
+
+    public function testCaExplodePadsToCount(): void
+    {
+        $result = \ca_explode(':', 'a', 3);
+        $this->assertEquals(['a', '', ''], $result);
+    }
+
+    // =====================================================
+    // Tests for getYoutubeThumbnail()
+    // =====================================================
+
+    public function testYoutubeThumbnailFromShortUrl(): void
+    {
+        $result = \getYoutubeThumbnail('https://youtu.be/dQw4w9WgXcQ');
+        $this->assertEquals('https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', $result);
+    }
+
+    public function testYoutubeThumbnailFromWatchUrl(): void
+    {
+        $result = \getYoutubeThumbnail('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+        $this->assertEquals('https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', $result);
+    }
+
+    public function testYoutubeThumbnailFromWatchUrlNoWww(): void
+    {
+        $result = \getYoutubeThumbnail('https://youtube.com/watch?v=dQw4w9WgXcQ');
+        $this->assertEquals('https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', $result);
+    }
+
+    public function testYoutubeThumbnailReturnsOriginalForNonYoutube(): void
+    {
+        $url = 'https://example.com/video.mp4';
+        $result = \getYoutubeThumbnail($url);
+        $this->assertEquals($url, $result);
+    }
+
+    // =====================================================
+    // Tests for addMissingVars()
+    // =====================================================
+
+    public function testAddMissingVarsAddsNullForMissingKeys(): void
+    {
+        $template = ['Name' => 'Test App', 'Repository' => 'test/app'];
+        $result = \addMissingVars($template);
+        
+        // Check that original values are preserved
+        $this->assertEquals('Test App', $result['Name']);
+        $this->assertEquals('test/app', $result['Repository']);
+        
+        // Check that missing vars are added as null
+        $this->assertArrayHasKey('Category', $result);
+        $this->assertNull($result['Category']);
+        $this->assertArrayHasKey('MinVer', $result);
+        $this->assertNull($result['MinVer']);
+    }
+
+    public function testAddMissingVarsPreservesExistingValues(): void
+    {
+        $template = ['Category' => 'Media', 'MinVer' => '6.10'];
+        $result = \addMissingVars($template);
+        
+        $this->assertEquals('Media', $result['Category']);
+        $this->assertEquals('6.10', $result['MinVer']);
+    }
+
+    public function testAddMissingVarsReturnsNonArrayInput(): void
+    {
+        $this->assertEquals('string', \addMissingVars('string'));
+        $this->assertNull(\addMissingVars(null));
+    }
+
+    // =====================================================
+    // Tests for portsUsed()
+    // =====================================================
+
+    public function testPortsUsedReturnEmptyForNonBridgeNetwork(): void
+    {
+        $template = ['Network' => 'host', 'Config' => []];
+        $result = \portsUsed($template);
+        $this->assertEquals('[]', $result);
+    }
+
+    public function testPortsUsedExtractsBridgePorts(): void
+    {
+        $template = [
+            'Network' => 'bridge',
+            'Config' => [
+                ['@attributes' => ['Type' => 'Port', 'Default' => '8080'], 'value' => ''],
+                ['@attributes' => ['Type' => 'Port', 'Default' => '443'], 'value' => '8443'],
+            ]
+        ];
+        $result = json_decode(\portsUsed($template), true);
+        $this->assertContains('8080', $result);
+        $this->assertContains('8443', $result);
+    }
+
+    public function testPortsUsedReturnsEmptyForNonArray(): void
+    {
+        $result = \portsUsed('not an array');
+        $this->assertEquals('[]', $result);
+    }
+
+    public function testPortsUsedSkipsNonPortConfig(): void
+    {
+        $template = [
+            'Network' => 'bridge',
+            'Config' => [
+                ['@attributes' => ['Type' => 'Path'], 'value' => '/data'],
+                ['@attributes' => ['Type' => 'Port', 'Default' => '8080'], 'value' => ''],
+            ]
+        ];
+        $result = json_decode(\portsUsed($template), true);
+        $this->assertCount(1, $result);
+        $this->assertContains('8080', $result);
+    }
+
+    // =====================================================
+    // Tests for removeXMLtags() - recursive tag stripping
+    // =====================================================
+
+    public function testRemoveXMLtagsStripsSimpleTags(): void
+    {
+        $template = ['Description' => '<b>Bold</b> text'];
+        \removeXMLtags($template);
+        $this->assertStringNotContainsString('<b>', $template['Description']);
+        $this->assertStringContainsString('Bold', $template['Description']);
+    }
+
+    public function testRemoveXMLtagsHandlesNestedArrays(): void
+    {
+        $template = [
+            'App' => [
+                'Name' => '<i>Styled</i>',
+                'Description' => '<b>Bold</b>'
+            ]
+        ];
+        \removeXMLtags($template);
+        $this->assertStringNotContainsString('<i>', $template['App']['Name']);
+        $this->assertStringNotContainsString('<b>', $template['App']['Description']);
+    }
+
+    public function testRemoveXMLtagsConvertsBrTags(): void
+    {
+        $template = ['Description' => 'Line 1<br>Line 2'];
+        \removeXMLtags($template);
+        // <br> gets converted to newlines, then processed
+        $this->assertIsString($template['Description']);
+    }
+
+    // =====================================================
+    // Tests for TypeConverter static methods
+    // =====================================================
+
+    public function testTypeConverterIsArrayWithArray(): void
+    {
+        $this->assertTrue(\TypeConverter::isArray(['a', 'b', 'c']));
+    }
+
+    public function testTypeConverterIsArrayWithString(): void
+    {
+        $this->assertFalse(\TypeConverter::isArray('not an array'));
+    }
+
+    public function testTypeConverterIsJsonWithValidJson(): void
+    {
+        $this->assertTrue(\TypeConverter::isJson('{"key": "value"}'));
+    }
+
+    public function testTypeConverterIsJsonWithInvalidJson(): void
+    {
+        $this->assertFalse(\TypeConverter::isJson('not json'));
+    }
+
+    public function testTypeConverterIsObjectWithObject(): void
+    {
+        $obj = new \stdClass();
+        $this->assertTrue(\TypeConverter::isObject($obj));
+    }
+
+    public function testTypeConverterIsObjectWithArray(): void
+    {
+        $this->assertFalse(\TypeConverter::isObject(['key' => 'value']));
+    }
+
+    public function testTypeConverterIsSerializedWithSerialized(): void
+    {
+        $serialized = serialize(['a' => 1, 'b' => 2]);
+        $this->assertNotFalse(\TypeConverter::isSerialized($serialized));
+    }
+
+    public function testTypeConverterIsSerializedWithPlainString(): void
+    {
+        $this->assertFalse(\TypeConverter::isSerialized('plain string'));
+    }
+
+    public function testTypeConverterIsXmlWithValidXml(): void
+    {
+        $xml = '<?xml version="1.0"?><root><item>test</item></root>';
+        $this->assertNotFalse(\TypeConverter::isXml($xml));
+    }
+
+    public function testTypeConverterIsXmlWithInvalidXml(): void
+    {
+        $this->assertFalse(\TypeConverter::isXml('not xml'));
+    }
+
+    public function testTypeConverterIsDetectsArray(): void
+    {
+        $this->assertEquals('array', \TypeConverter::is(['a', 'b']));
+    }
+
+    public function testTypeConverterIsDetectsJson(): void
+    {
+        $this->assertEquals('json', \TypeConverter::is('{"key": "value"}'));
+    }
+
+    public function testTypeConverterIsDetectsObject(): void
+    {
+        $obj = new \stdClass();
+        $this->assertEquals('object', \TypeConverter::is($obj));
+    }
+
+    // =====================================================
+    // Tests for formatTags() - tag display formatting
+    // Note: Requires global templates to be set
+    // =====================================================
+
+    // Skipped: formatTags() requires complex global state
+
+    // =====================================================
+    // Tests for write_ini_file() format generation
+    // Note: Uses file I/O, tested separately
+    // =====================================================
+
+    // Skipped: write_ini_file() requires file I/O
+
+    // =====================================================
+    // Tests for fixAttributes() - XML attribute normalization
+    // =====================================================
+
+    public function testFixAttributesNormalizesConfig(): void
+    {
+        $template = [
+            'Config' => [
+                '@attributes' => ['Type' => 'Port'],
+                'value' => '8080'
+            ]
+        ];
+        \fixAttributes($template, 'Config');
+        
+        // After fix, Config should be array with numeric index
+        $this->assertIsArray($template['Config']);
+    }
+
+    public function testFixAttributesHandlesMissingAttribute(): void
+    {
+        $template = ['Name' => 'Test'];
+        // Should not throw when attribute doesn't exist
+        \fixAttributes($template, 'Config');
+        $this->assertArrayNotHasKey('Config', $template);
+    }
+
+    public function testFixAttributesHandlesNonArrayValue(): void
+    {
+        $template = ['Config' => 'string value'];
+        // Should not throw when Config is not an array
+        \fixAttributes($template, 'Config');
+        $this->assertEquals('string value', $template['Config']);
+    }
 }

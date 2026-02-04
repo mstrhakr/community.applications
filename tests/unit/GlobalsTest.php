@@ -186,6 +186,113 @@ class GlobalsTest extends TestCase
     }
 
     // =====================================================
+    // Tests for favouriteSort() - uses global $caSettings
+    // =====================================================
+
+    public function testFavouriteSortFavouriteFirst(): void
+    {
+        global $caSettings;
+        $caSettings['favourite'] = 'MyFavoriteRepo';
+        
+        $a = ['Repo' => 'MyFavoriteRepo'];
+        $b = ['Repo' => 'OtherRepo'];
+        
+        $result = \favouriteSort($a, $b);
+        $this->assertEquals(-1, $result);
+    }
+
+    public function testFavouriteSortFavouriteSecond(): void
+    {
+        global $caSettings;
+        $caSettings['favourite'] = 'MyFavoriteRepo';
+        
+        $a = ['Repo' => 'OtherRepo'];
+        $b = ['Repo' => 'MyFavoriteRepo'];
+        
+        $result = \favouriteSort($a, $b);
+        $this->assertEquals(1, $result);
+    }
+
+    public function testFavouriteSortNeitherFavourite(): void
+    {
+        global $caSettings;
+        $caSettings['favourite'] = 'SomeOtherRepo';
+        
+        $a = ['Repo' => 'RepoA'];
+        $b = ['Repo' => 'RepoB'];
+        
+        $result = \favouriteSort($a, $b);
+        $this->assertEquals(0, $result);
+    }
+
+    // =====================================================
+    // Tests for fixTemplates() - uses global $caSettings
+    // =====================================================
+
+    public function testFixTemplatesAddsDefaultMinVer(): void
+    {
+        global $caSettings;
+        $caSettings['unRaidVersion'] = '7.0.0';
+        
+        // Docker template without MinVer should get 6.0
+        $template = ['Name' => 'TestApp', 'MinVer' => null];
+        $result = \fixTemplates($template);
+        
+        $this->assertEquals('6.0', $result['MinVer']);
+    }
+
+    public function testFixTemplatesPluginGetsHigherMinVer(): void
+    {
+        global $caSettings;
+        $caSettings['unRaidVersion'] = '7.0.0';
+        
+        // Plugin without MinVer should get 6.1 (higher than docker)
+        $template = ['Name' => 'TestPlugin', 'MinVer' => null, 'Plugin' => true];
+        $result = \fixTemplates($template);
+        
+        $this->assertEquals('6.1', $result['MinVer']);
+    }
+
+    public function testFixTemplatesHandlesDeprecatedBoolean(): void
+    {
+        global $caSettings;
+        $caSettings['unRaidVersion'] = '7.0.0';
+        
+        // String "FALSE" should become boolean false
+        $template = ['Name' => 'TestApp', 'MinVer' => '6.0', 'Deprecated' => 'FALSE'];
+        $result = \fixTemplates($template);
+        
+        $this->assertFalse($result['Deprecated']);
+    }
+
+    public function testFixTemplatesHandlesBlacklistBoolean(): void
+    {
+        global $caSettings;
+        $caSettings['unRaidVersion'] = '7.0.0';
+        
+        $template = ['Name' => 'TestApp', 'MinVer' => '6.0', 'Blacklist' => 'true'];
+        $result = \fixTemplates($template);
+        
+        $this->assertTrue($result['Blacklist']);
+    }
+
+    public function testFixTemplatesMarksDeprecatedByMaxVer(): void
+    {
+        global $caSettings;
+        $caSettings['unRaidVersion'] = '8.0.0'; // Higher than DeprecatedMaxVer
+        
+        $template = [
+            'Name' => 'OldApp',
+            'MinVer' => '6.0',
+            'DeprecatedMaxVer' => '7.5.0',
+            'Deprecated' => false,
+        ];
+        $result = \fixTemplates($template);
+        
+        $this->assertTrue($result['Deprecated']);
+    }
+
+    // =====================================================
     // Tests for randomFile() - uses global $caPaths
     // =====================================================
 
