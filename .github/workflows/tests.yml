@@ -27,6 +27,7 @@ jobs:
           php-version: ${{ matrix.php-version }}
           extensions: json, curl, mbstring, xml
           coverage: xdebug
+          ini-values: short_open_tag=On
       
       - name: Get Composer cache directory
         id: composer-cache

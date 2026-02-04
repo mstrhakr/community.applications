@@ -32,7 +32,7 @@ class HelpersTest extends TestCase
     public function testArrayEntriesToObjectWithDefaultFlag(): void
     {
         $input = ['one', 'two', 'three'];
-        $result = arrayEntriesToObject($input);
+        $result = \arrayEntriesToObject($input);
         
         $this->assertIsArray($result);
         $this->assertArrayHasKey('one', $result);
@@ -46,7 +46,7 @@ class HelpersTest extends TestCase
     public function testArrayEntriesToObjectWithCustomFlag(): void
     {
         $input = ['a', 'b'];
-        $result = arrayEntriesToObject($input, 'custom');
+        $result = \arrayEntriesToObject($input, 'custom');
         
         $this->assertEquals('custom', $result['a']);
         $this->assertEquals('custom', $result['b']);
@@ -54,14 +54,14 @@ class HelpersTest extends TestCase
 
     public function testArrayEntriesToObjectWithEmptyArray(): void
     {
-        $result = arrayEntriesToObject([]);
+        $result = \arrayEntriesToObject([]);
         $this->assertIsArray($result);
         $this->assertEmpty($result);
     }
 
     public function testArrayEntriesToObjectWithNonArray(): void
     {
-        $result = arrayEntriesToObject('not an array');
+        $result = \arrayEntriesToObject('not an array');
         $this->assertIsArray($result);
         $this->assertEmpty($result);
     }
@@ -72,29 +72,29 @@ class HelpersTest extends TestCase
 
     public function testStartsWithMatchingPrefix(): void
     {
-        $this->assertTrue(startsWith('hello world', 'hello'));
+        $this->assertTrue(\startsWith('hello world', 'hello'));
     }
 
     public function testStartsWithNonMatchingPrefix(): void
     {
-        $this->assertFalse(startsWith('hello world', 'world'));
+        $this->assertFalse(\startsWith('hello world', 'world'));
     }
 
     public function testStartsWithEmptyNeedle(): void
     {
-        $this->assertTrue(startsWith('hello', ''));
+        $this->assertTrue(\startsWith('hello', ''));
     }
 
     public function testStartsWithCaseInsensitive(): void
     {
         // startsWith uses strripos which is case-insensitive
-        $this->assertTrue(startsWith('Hello World', 'hello'));
+        $this->assertTrue(\startsWith('Hello World', 'hello'));
     }
 
     public function testStartsWithNonStringInputs(): void
     {
-        $this->assertFalse(startsWith(123, 'test'));
-        $this->assertFalse(startsWith('test', 123));
+        $this->assertFalse(\startsWith(123, 'test'));
+        $this->assertFalse(\startsWith('test', 123));
     }
 
     // =====================================================
@@ -103,22 +103,22 @@ class HelpersTest extends TestCase
 
     public function testEndsWithMatchingSuffix(): void
     {
-        $this->assertTrue(endsWith('hello world', 'world'));
+        $this->assertTrue(\endsWith('hello world', 'world'));
     }
 
     public function testEndsWithNonMatchingSuffix(): void
     {
-        $this->assertFalse(endsWith('hello world', 'hello'));
+        $this->assertFalse(\endsWith('hello world', 'hello'));
     }
 
     public function testEndsWithEmptyString(): void
     {
-        $this->assertTrue(endsWith('hello', ''));
+        $this->assertTrue(\endsWith('hello', ''));
     }
 
     public function testEndsWithExactMatch(): void
     {
-        $this->assertTrue(endsWith('test', 'test'));
+        $this->assertTrue(\endsWith('test', 'test'));
     }
 
     // =====================================================
@@ -127,19 +127,19 @@ class HelpersTest extends TestCase
 
     public function testFirstStrReplaceReplacesFirst(): void
     {
-        $result = first_str_replace('foo bar foo', 'foo', 'baz');
+        $result = \first_str_replace('foo bar foo', 'foo', 'baz');
         $this->assertEquals('baz bar foo', $result);
     }
 
     public function testFirstStrReplaceNoMatch(): void
     {
-        $result = first_str_replace('hello world', 'xyz', 'abc');
+        $result = \first_str_replace('hello world', 'xyz', 'abc');
         $this->assertEquals('hello world', $result);
     }
 
     public function testFirstStrReplaceEmptyNeedle(): void
     {
-        $result = first_str_replace('hello', '', 'x');
+        $result = \first_str_replace('hello', '', 'x');
         $this->assertEquals('xhello', $result);
     }
 
@@ -149,13 +149,13 @@ class HelpersTest extends TestCase
 
     public function testLastStrReplaceReplacesLast(): void
     {
-        $result = last_str_replace('foo bar foo', 'foo', 'baz');
+        $result = \last_str_replace('foo bar foo', 'foo', 'baz');
         $this->assertEquals('foo bar baz', $result);
     }
 
     public function testLastStrReplaceNoMatch(): void
     {
-        $result = last_str_replace('hello world', 'xyz', 'abc');
+        $result = \last_str_replace('hello world', 'xyz', 'abc');
         $this->assertEquals('hello world', $result);
     }
 
@@ -171,7 +171,7 @@ class HelpersTest extends TestCase
             ['name' => 'grape', 'color' => 'purple'],
         ];
         
-        $result = searchArray($array, 'name', 'banana');
+        $result = \searchArray($array, 'name', 'banana');
         $this->assertEquals(1, $result);
     }
 
@@ -182,7 +182,7 @@ class HelpersTest extends TestCase
             ['name' => 'banana'],
         ];
         
-        $result = searchArray($array, 'name', 'orange');
+        $result = \searchArray($array, 'name', 'orange');
         $this->assertFalse($result);
     }
 
@@ -194,13 +194,13 @@ class HelpersTest extends TestCase
             ['name' => 'apple'],  // Second apple at index 2
         ];
         
-        $result = searchArray($array, 'name', 'apple', 1);
+        $result = \searchArray($array, 'name', 'apple', 1);
         $this->assertEquals(2, $result);
     }
 
     public function testSearchArrayEmptyArray(): void
     {
-        $result = searchArray([], 'key', 'value');
+        $result = \searchArray([], 'key', 'value');
         $this->assertFalse($result);
     }
 
@@ -211,14 +211,14 @@ class HelpersTest extends TestCase
     public function testGetPostReturnsPostedValue(): void
     {
         $_POST['testKey'] = urlencode('test value');
-        $result = getPost('testKey', 'default');
+        $result = \getPost('testKey', 'default');
         $this->assertEquals('test value', $result);
         unset($_POST['testKey']);
     }
 
     public function testGetPostReturnsDefault(): void
     {
-        $result = getPost('nonexistent', 'default value');
+        $result = \getPost('nonexistent', 'default value');
         $this->assertEquals('default value', $result);
     }
 
@@ -228,7 +228,7 @@ class HelpersTest extends TestCase
 
     public function testVarDumpRetReturnsString(): void
     {
-        $result = var_dump_ret('test');
+        $result = \var_dump_ret('test');
         $this->assertIsString($result);
         $this->assertStringContainsString('string', $result);
         $this->assertStringContainsString('test', $result);
@@ -236,14 +236,14 @@ class HelpersTest extends TestCase
 
     public function testVarDumpRetWithArray(): void
     {
-        $result = var_dump_ret(['a' => 1, 'b' => 2]);
+        $result = \var_dump_ret(['a' => 1, 'b' => 2]);
         $this->assertIsString($result);
         $this->assertStringContainsString('array', $result);
     }
 
     public function testVarDumpRetWithNull(): void
     {
-        $result = var_dump_ret(null);
+        $result = \var_dump_ret(null);
         $this->assertIsString($result);
         $this->assertStringContainsString('NULL', $result);
     }

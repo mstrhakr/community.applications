@@ -40,7 +40,7 @@ class GlobalsTest extends TestCase
             'MaxVer' => '8.0.0',
         ];
         
-        $this->assertTrue(versionCheck($template));
+        $this->assertTrue(\versionCheck($template));
     }
 
     public function testVersionCheckFailsWhenBelowMinVer(): void
@@ -52,7 +52,7 @@ class GlobalsTest extends TestCase
             'MinVer' => '7.0.0',
         ];
         
-        $this->assertFalse(versionCheck($template));
+        $this->assertFalse(\versionCheck($template));
     }
 
     public function testVersionCheckFailsWhenAboveMaxVer(): void
@@ -64,7 +64,7 @@ class GlobalsTest extends TestCase
             'MaxVer' => '7.5.0',
         ];
         
-        $this->assertFalse(versionCheck($template));
+        $this->assertFalse(\versionCheck($template));
     }
 
     public function testVersionCheckWithIncompatibleVersion(): void
@@ -77,7 +77,7 @@ class GlobalsTest extends TestCase
             'IncompatibleVersion' => '1.0.0',
         ];
         
-        $this->assertFalse(versionCheck($template));
+        $this->assertFalse(\versionCheck($template));
     }
 
     public function testVersionCheckWithIncompatibleVersionArray(): void
@@ -90,7 +90,7 @@ class GlobalsTest extends TestCase
             'IncompatibleVersion' => ['0.9.0', '1.0.0', '1.1.0'],
         ];
         
-        $this->assertFalse(versionCheck($template));
+        $this->assertFalse(\versionCheck($template));
     }
 
     // =====================================================
@@ -105,7 +105,7 @@ class GlobalsTest extends TestCase
         $a = ['SortName' => 'Apple', 'Name' => 'Apple'];
         $b = ['SortName' => 'Banana', 'Name' => 'Banana'];
         
-        $result = mySort($a, $b);
+        $result = \mySort($a, $b);
         $this->assertEquals(-1, $result);
     }
 
@@ -117,7 +117,7 @@ class GlobalsTest extends TestCase
         $a = ['SortName' => 'Apple', 'Name' => 'Apple'];
         $b = ['SortName' => 'Banana', 'Name' => 'Banana'];
         
-        $result = mySort($a, $b);
+        $result = \mySort($a, $b);
         $this->assertEquals(1, $result);
     }
 
@@ -129,7 +129,7 @@ class GlobalsTest extends TestCase
         $a = ['downloads' => 100];
         $b = ['downloads' => 50];
         
-        $result = mySort($a, $b);
+        $result = \mySort($a, $b);
         $this->assertEquals(-1, $result);  // 100 > 50, descending = -1
     }
 
@@ -141,7 +141,7 @@ class GlobalsTest extends TestCase
         $a = ['SortName' => 'Same', 'Name' => 'Same'];
         $b = ['SortName' => 'Same', 'Name' => 'Same'];
         
-        $result = mySort($a, $b);
+        $result = \mySort($a, $b);
         $this->assertEquals(0, $result);
     }
 
@@ -157,7 +157,7 @@ class GlobalsTest extends TestCase
         $a = ['RepoName' => 'MyFavorite'];
         $b = ['RepoName' => 'OtherRepo'];
         
-        $result = repositorySort($a, $b);
+        $result = \repositorySort($a, $b);
         $this->assertEquals(-1, $result);
     }
 
@@ -169,7 +169,7 @@ class GlobalsTest extends TestCase
         $a = ['RepoName' => 'OtherRepo'];
         $b = ['RepoName' => 'MyFavorite'];
         
-        $result = repositorySort($a, $b);
+        $result = \repositorySort($a, $b);
         $this->assertEquals(1, $result);
     }
 
@@ -181,7 +181,7 @@ class GlobalsTest extends TestCase
         $a = ['RepoName' => 'RepoA'];
         $b = ['RepoName' => 'RepoB'];
         
-        $result = repositorySort($a, $b);
+        $result = \repositorySort($a, $b);
         $this->assertEquals(0, $result);
     }
 
@@ -193,7 +193,7 @@ class GlobalsTest extends TestCase
     {
         global $caPaths;
         
-        $file = randomFile();
+        $file = \randomFile();
         
         $this->assertIsString($file);
         // tempnam truncates prefix to 3 chars, so "CA-Temp-" becomes "CA-"
