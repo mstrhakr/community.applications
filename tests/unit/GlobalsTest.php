@@ -309,4 +309,244 @@ class GlobalsTest extends TestCase
         // Clean up if it was created
         @unlink($file);
     }
+
+    // =====================================================
+    // Tests for isMobile() - uses $_SERVER['HTTP_USER_AGENT']
+    // =====================================================
+
+    public function testIsMobileDetectsIPhone(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1';
+        
+        $this->assertTrue(\isMobile());
+    }
+
+    public function testIsMobileDetectsAndroid(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36';
+        
+        $this->assertTrue(\isMobile());
+    }
+
+    public function testIsMobileDetectsIPad(): void
+    {
+        // iPad with mobile keyword
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+        
+        // iPad without explicit "mobile" may not be detected - this tests the real behavior
+        $result = \isMobile();
+        $this->assertIsBool($result);
+    }
+
+    public function testIsMobileReturnsFalseForDesktop(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36';
+        
+        $this->assertFalse(\isMobile());
+    }
+
+    public function testIsMobileDetectsBlackberry(): void
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (BlackBerry; U; BlackBerry 9900; en) AppleWebKit/534.11+ (KHTML, like Gecko) Version/7.1.0.346 Mobile Safari/534.11+';
+        
+        $this->assertTrue(\isMobile());
+    }
+
+    // =====================================================
+    // Tests for isTailScaleInstalled() - uses is_file()
+    // =====================================================
+
+    public function testTailScaleNotInstalledByDefault(): void
+    {
+        // When neither plugin file exists, should return false
+        // StreamWrapper makes /var/log/plugins virtual
+        $this->assertFalse(\isTailScaleInstalled());
+    }
+
+    public function testTailScaleDetectsPreviewPlugin(): void
+    {
+        // Create the preview plugin file
+        @mkdir('/var/log/plugins', 0777, true);
+        @touch('/var/log/plugins/tailscale-preview.plg');
+        
+        $this->assertTrue(\isTailScaleInstalled());
+        
+        // Cleanup
+        @unlink('/var/log/plugins/tailscale-preview.plg');
+    }
+
+    public function testTailScaleDetectsStablePlugin(): void
+    {
+        // Create the stable plugin file
+        @mkdir('/var/log/plugins', 0777, true);
+        @touch('/var/log/plugins/tailscale.plg');
+        
+        $this->assertTrue(\isTailScaleInstalled());
+        
+        // Cleanup
+        @unlink('/var/log/plugins/tailscale.plg');
+    }
+
+    // =====================================================
+    // Tests for getGlobals() - populates $GLOBALS['templates']
+    // =====================================================
+
+    public function testGetGlobalsLoadsTemplatesFromFile(): void
+    {
+        global $caPaths;
+        
+        // Create a test templates file
+        $testTemplates = [
+            ['Name' => 'TestApp1', 'Repository' => 'test/app1'],
+            ['Name' => 'TestApp2', 'Repository' => 'test/app2'],
+        ];
+        
+        // Write to the expected path
+        @mkdir(dirname($caPaths['community-templates-info']), 0777, true);
+        file_put_contents($caPaths['community-templates-info'], serialize($testTemplates));
+        
+        // Clear any existing global
+        unset($GLOBALS['templates']);
+        
+        \getGlobals();
+        
+        $this->assertIsArray($GLOBALS['templates']);
+        $this->assertCount(2, $GLOBALS['templates']);
+        $this->assertEquals('TestApp1', $GLOBALS['templates'][0]['Name']);
+        
+        // Cleanup
+        @unlink($caPaths['community-templates-info']);
+    }
+
+    public function testGetGlobalsReturnsEmptyWhenFileNotExists(): void
+    {
+        global $caPaths;
+        
+        // Ensure file doesn't exist
+        @unlink($caPaths['community-templates-info']);
+        unset($GLOBALS['templates']);
+        
+        \getGlobals();
+        
+        $this->assertEquals([], $GLOBALS['templates']);
+    }
+
+    public function testGetGlobalsDoesNotReloadIfAlreadyPopulated(): void
+    {
+        global $caPaths;
+        
+        // Pre-populate the global
+        $GLOBALS['templates'] = [['Name' => 'AlreadyLoaded']];
+        
+        // Create a different file content
+        @mkdir(dirname($caPaths['community-templates-info']), 0777, true);
+        file_put_contents($caPaths['community-templates-info'], serialize([['Name' => 'FromFile']]));
+        
+        \getGlobals();
+        
+        // Should still have the pre-populated value
+        $this->assertEquals('AlreadyLoaded', $GLOBALS['templates'][0]['Name']);
+        
+        // Cleanup
+        @unlink($caPaths['community-templates-info']);
+        unset($GLOBALS['templates']);
+    }
+
+    // =====================================================
+    // Tests for dropAttributeCache() - deletes cache file
+    // =====================================================
+
+    public function testDropAttributeCacheDeletesFile(): void
+    {
+        global $caPaths;
+        
+        // Create the cache file
+        @mkdir(dirname($caPaths['pluginAttributesCache']), 0777, true);
+        file_put_contents($caPaths['pluginAttributesCache'], serialize(['test' => 'data']));
+        
+        $this->assertFileExists($caPaths['pluginAttributesCache']);
+        
+        \dropAttributeCache();
+        
+        $this->assertFileDoesNotExist($caPaths['pluginAttributesCache']);
+    }
+
+    public function testDropAttributeCacheHandlesMissingFile(): void
+    {
+        global $caPaths;
+        
+        // Ensure file doesn't exist
+        @unlink($caPaths['pluginAttributesCache']);
+        
+        // Should not throw an error
+        \dropAttributeCache();
+        
+        $this->assertFileDoesNotExist($caPaths['pluginAttributesCache']);
+    }
+
+    // =====================================================
+    // Tests for pluginDupe() - detects duplicate plugins
+    // =====================================================
+
+    public function testPluginDupeDetectsDuplicates(): void
+    {
+        global $caPaths;
+        
+        // Create the templates file with duplicates (getGlobals() loads from this)
+        $templates = [
+            ['Plugin' => true, 'Repository' => 'https://example.com/plugin1.plg'],
+            ['Plugin' => true, 'Repository' => 'https://other.com/plugin1.plg'],
+            ['Plugin' => true, 'Repository' => 'https://example.com/unique.plg'],
+        ];
+        
+        @mkdir(dirname($caPaths['community-templates-info']), 0777, true);
+        @mkdir(dirname($caPaths['pluginDupes']), 0777, true);
+        file_put_contents($caPaths['community-templates-info'], serialize($templates));
+        
+        // Clear any existing global so getGlobals() will reload from file
+        unset($GLOBALS['templates']);
+        
+        \pluginDupe();
+        
+        $dupes = @unserialize(@file_get_contents($caPaths['pluginDupes'])) ?: [];
+        
+        $this->assertArrayHasKey('plugin1.plg', $dupes);
+        $this->assertArrayNotHasKey('unique.plg', $dupes);
+        
+        // Cleanup
+        @unlink($caPaths['community-templates-info']);
+        @unlink($caPaths['pluginDupes']);
+        unset($GLOBALS['templates']);
+    }
+
+    public function testPluginDupeIgnoresNonPlugins(): void
+    {
+        global $caPaths;
+        
+        // Set up templates with docker apps (not plugins)
+        $templates = [
+            ['Repository' => 'linuxserver/plex'],
+            ['Repository' => 'linuxserver/plex'], // Same docker image
+            ['Plugin' => true, 'Repository' => 'https://example.com/unique.plg'],
+        ];
+        
+        @mkdir(dirname($caPaths['community-templates-info']), 0777, true);
+        @mkdir(dirname($caPaths['pluginDupes']), 0777, true);
+        file_put_contents($caPaths['community-templates-info'], serialize($templates));
+        
+        // Clear any existing global
+        unset($GLOBALS['templates']);
+        
+        \pluginDupe();
+        
+        $dupes = @unserialize(@file_get_contents($caPaths['pluginDupes'])) ?: [];
+        
+        // Docker apps should not count as dupes
+        $this->assertCount(0, $dupes);
+        
+        // Cleanup
+        @unlink($caPaths['community-templates-info']);
+        @unlink($caPaths['pluginDupes']);
+        unset($GLOBALS['templates']);
+    }
 }

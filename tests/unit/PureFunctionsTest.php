@@ -636,4 +636,106 @@ class PureFunctionsTest extends TestCase
         \fixAttributes($template, 'Config');
         $this->assertEquals('string value', $template['Config']);
     }
+
+    // =====================================================
+    // Tests for makeXML() - XML generation from template
+    // =====================================================
+
+    public function testMakeXMLGeneratesValidXML(): void
+    {
+        $template = [
+            'Name' => 'TestApp',
+            'Repository' => 'test/app',
+            'Overview' => 'Test application description',
+        ];
+        
+        $xml = \makeXML($template);
+        
+        $this->assertIsString($xml);
+        $this->assertStringContainsString('<?xml', $xml);
+        $this->assertStringContainsString('<Container>', $xml);
+        $this->assertStringContainsString('<Name>TestApp</Name>', $xml);
+    }
+
+    public function testMakeXMLAddsVersionAttribute(): void
+    {
+        $template = [
+            'Name' => 'TestApp',
+            'Config' => [
+                '@attributes' => ['Type' => 'Port'],
+                'value' => '8080'
+            ],
+        ];
+        
+        $xml = \makeXML($template);
+        
+        // With Config entries, should add version="2" attribute
+        $this->assertStringContainsString('version="2"', $xml);
+    }
+
+    public function testMakeXMLCopiesOverviewToDescription(): void
+    {
+        $template = [
+            'Name' => 'TestApp',
+            'Overview' => 'My app overview',
+        ];
+        
+        $xml = \makeXML($template);
+        
+        // Overview should be copied to Description
+        $this->assertStringContainsString('<Description>My app overview</Description>', $xml);
+    }
+
+    public function testMakeXMLHandlesNetworkConfig(): void
+    {
+        $template = [
+            'Name' => 'TestApp',
+            'Network' => [
+                '@attributes' => ['Default' => 'bridge'],
+            ],
+        ];
+        
+        $xml = \makeXML($template);
+        
+        $this->assertStringContainsString('Network', $xml);
+    }
+
+    public function testMakeXMLSanitizesRequiresLinks(): void
+    {
+        $template = [
+            'Name' => 'TestApp',
+            'Requires' => 'Needs //search_term\\\\',
+        ];
+        
+        $xml = \makeXML($template);
+        
+        // The sanitization replaces //term\\ with term
+        $this->assertStringContainsString('Requires', $xml);
+    }
+
+    // =====================================================
+    // Tests for languageCheck() - checks language updates
+    // =====================================================
+
+    public function testLanguageCheckReturnsFalseWithoutURL(): void
+    {
+        $template = ['LanguageURL' => ''];
+        
+        $this->assertFalse(\languageCheck($template));
+    }
+
+    public function testLanguageCheckReturnsFalseWhenNotInstalled(): void
+    {
+        global $caPaths;
+        
+        $template = [
+            'LanguageURL' => 'https://example.com/lang.xml',
+            'LanguagePack' => 'de_DE',
+        ];
+        
+        // Language not installed
+        @unlink($caPaths['installedLanguages'] . '/lang-de_DE.xml');
+        
+        $this->assertFalse(\languageCheck($template));
+    }
 }

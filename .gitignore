@@ -56,7 +56,8 @@ composer.lock
 
 # PHPUnit
 .phpunit.cache/
-coverage-report/
+test
+/tests/coverage/
 
 # IDE
 .idea/

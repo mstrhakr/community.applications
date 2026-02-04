@@ -1,22 +1,22 @@
 # Testing Roadmap for Community Applications
 
 ## Current State (Updated)
-- **157 tests** covering **~45 functions** (~44% function coverage)
-- **199 assertions** verifying behavior
+- **179 tests** covering **~52 functions** (~51% function coverage)
+- **228 assertions** verifying behavior
 - Line coverage reports 97% but is misleading (see below)
 - Tests organized by dependency tier
 
 ## Why Line Coverage is Misleading
-PHPUnit counts lines executed during `require_once` as "covered". Since CA's code is procedural (not OOP), loading files executes most lines. Real function coverage is now ~44%.
+PHPUnit counts lines executed during `require_once` as "covered". Since CA's code is procedural (not OOP), loading files executes most lines. Real function coverage is now ~51%.
 
 ## Test File Summary
 
 | File | Tests | Focus |
 |------|-------|-------|
 | `ExecTest.php` | 10 | `checkRandomApp()` validation |
-| `GlobalsTest.php` | 21 | Sort functions, version checking, global state |
+| `GlobalsTest.php` | 36 | Sort functions, version checking, global state, file detection |
 | `HelpersTest.php` | 27 | String utilities, array helpers |
-| `PureFunctionsTest.php` | 80 | Pure functions, TypeConverter |
+| `PureFunctionsTest.php` | 87 | Pure functions, TypeConverter, makeXML |
 | `FileIOTest.php` | 19 | File read/write operations |
 
 ## Completed Tests by Tier
@@ -59,6 +59,13 @@ PHPUnit counts lines executed during `require_once` as "covered". Since CA's cod
 | `fixTemplates()` | ✅ | 5 tests |
 | `checkRandomApp()` | ✅ | 10 tests |
 | `randomFile()` | ✅ | 3 tests |
+| `isMobile()` | ✅ | 5 tests |
+| `isTailScaleInstalled()` | ✅ | 3 tests |
+| `getGlobals()` | ✅ | 3 tests |
+| `dropAttributeCache()` | ✅ | 2 tests |
+| `pluginDupe()` | ✅ | 2 tests |
+| `makeXML()` | ✅ | 5 tests |
+| `languageCheck()` | ✅ | 2 tests |
 
 ### Tier 3: File I/O Functions ✅ COMPLETE
 | Function | Status | Tests |
@@ -69,17 +76,17 @@ PHPUnit counts lines executed during `require_once` as "covered". Since CA's cod
 | `readXmlFile()` | ✅ | 6 tests |
 | `write_ini_file()` | ✅ | 3 tests |
 
-### Tier 4: Network Functions - Not Yet Tested
-Need cURL mocking in plugin-tests framework:
+### Tier 4: Network Functions - Not Unit Testable
+Require cURL mocking which adds significant complexity with low ROI:
 
-| Function | File | Priority |
-|----------|------|----------|
-| `download_url()` | helpers.php | Medium |
-| `download_json()` | helpers.php | Medium |
-| `DownloadApplicationFeed()` | exec.php | Low |
+| Function | File | Verdict |
+|----------|------|---------|
+| `download_url()` | helpers.php | Integration test |
+| `download_json()` | helpers.php | Integration test |
+| `DownloadApplicationFeed()` | exec.php | Integration test |
 
-### Tier 5: Complex Action Handlers - Not Yet Tested
-Integration test candidates (require significant setup):
+### Tier 5: Complex Action Handlers - Integration Tests
+Require full Unraid environment (Docker, filesystem state, HTTP context):
 
 | Function | File | Complexity |
 |----------|------|------------|
@@ -90,44 +97,58 @@ Integration test candidates (require significant setup):
 | `pinApp()` | exec.php | Medium |
 | `toggleFavourite()` | exec.php | Medium |
 
-## Remaining Untested Functions
+## Remaining Untested Functions - Analysis
 
-### helpers.php
-- `getGlobals()` - Populates $GLOBALS['templates']
-- `ca_plugin()` - Plugin attribute caching
-- `dropAttributeCache()` - Cache management
-- `checkPluginUpdate()` - Plugin update checking
-- `makeXML()` - XML generation from template
-- `moderateTemplates()` - Template moderation
-- `pluginDupe()` - Duplicate plugin detection
-- `checkInstalledPlugin()` - Plugin installation check
-- `isMobile()` - Mobile browser detection
-- `formatTags()` - Tag display formatting
-- `postReturn()` - POST response handler
-- `languageCheck()` - Language update checking
-- `getAllInfo()` - Docker info aggregation
-- `debug()` - Debug logging
-- `checkServerDate()` - Server date validation
-- `isTailScaleInstalled()` - Tailscale detection
+### helpers.php - NOW TESTED ✅
+
+| Function | Status | Tests |
+|----------|--------|-------|
+| `getGlobals()` | ✅ | 3 tests |
+| `dropAttributeCache()` | ✅ | 2 tests |
+| `makeXML()` | ✅ | 5 tests |
+| `pluginDupe()` | ✅ | 2 tests |
+| `isMobile()` | ✅ | 5 tests |
+| `languageCheck()` | ✅ | 2 tests |
+| `isTailScaleInstalled()` | ✅ | 3 tests |
+
+### helpers.php - CANNOT Unit Test (Missing Mocks) ❌
+
+| Function | Blocker | Requires |
+|----------|---------|----------|
+| `ca_plugin()` | Uses `plugin()` | Add `plugin()` mock to framework |
+| `checkPluginUpdate()` | Uses `ca_plugin()` | Depends on `plugin()` mock |
+| `checkInstalledPlugin()` | Uses `ca_plugin()` | Depends on `plugin()` mock |
+| `checkServerDate()` | Uses `plugin()` | Add `plugin()` mock to framework |
+| `getAllInfo()` | Uses `$DockerTemplates`, `$DockerClient` | DockerMock integration |
+| `debug()` | Uses `$_SESSION`, `shell_exec()` | Session mock, exec mock |
+| `postReturn()` | HTTP headers, output buffering | Integration test |
+| `moderateTemplates()` | Complex chain (getGlobals, versionCheck, etc.) | Many dependencies |
+| `formatTags()` | Uses `$GLOBALS['templates']`, `tr()` | Needs HTML assertion |
 
 ### exec.php (Action Handlers)
-Most functions in exec.php are POST action handlers that require:
-- Full HTTP context
+All 48 functions in exec.php are POST action handlers requiring:
+- Full HTTP context (`$_POST`, `$_SERVER`)
 - Database/file state
 - Docker daemon connection
+- External service calls
 
-These are better suited for integration testing.
+**Verdict**: Integration test candidates only.
 
-## Running Tests
+## Maximum Achievable Unit Test Coverage
 
-```bash
-# Unix/Linux/macOS
-./bin/phpunit
+### Summary
+- **52 functions tested** out of 103 total (~51%)
+- **179 tests** with **228 assertions**
+- Remaining 51 functions require either:
+  - Missing mocks (`plugin()` function)
+  - Integration test environment (Docker, HTTP, Sessions)
+  - Complex dependency chains
 
-# Windows
-.\bin\phpunit.cmd
-
-# With coverage report
+### To reach higher coverage, the plugin-tests framework needs:
+1. `plugin()` function mock - would enable 4 more functions
+2. `$_SESSION` mock - would enable `debug()`
+3. Docker class integration with DockerMock - would enable `getAllInfo()`
+4. Output buffering test helpers - would enable `postReturn()`
 ./bin/phpunit --coverage-text
 
 # Specific test file
