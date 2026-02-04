@@ -1,20 +1,20 @@
 # Testing Roadmap for Community Applications
 
 ## Current State (Updated)
-- **179 tests** covering **~52 functions** (~51% function coverage)
-- **228 assertions** verifying behavior
+- **189 tests** covering **~56 functions** (~54% function coverage)
+- **239 assertions** verifying behavior
 - Line coverage reports 97% but is misleading (see below)
 - Tests organized by dependency tier
 
 ## Why Line Coverage is Misleading
-PHPUnit counts lines executed during `require_once` as "covered". Since CA's code is procedural (not OOP), loading files executes most lines. Real function coverage is now ~51%.
+PHPUnit counts lines executed during `require_once` as "covered". Since CA's code is procedural (not OOP), loading files executes most lines. Real function coverage is now ~54%.
 
 ## Test File Summary
 
 | File | Tests | Focus |
 |------|-------|-------|
 | `ExecTest.php` | 10 | `checkRandomApp()` validation |
-| `GlobalsTest.php` | 36 | Sort functions, version checking, global state, file detection |
+| `GlobalsTest.php` | 46 | Sort functions, version checking, global state, plugin functions |
 | `HelpersTest.php` | 27 | String utilities, array helpers |
 | `PureFunctionsTest.php` | 87 | Pure functions, TypeConverter, makeXML |
 | `FileIOTest.php` | 19 | File read/write operations |
@@ -66,6 +66,10 @@ PHPUnit counts lines executed during `require_once` as "covered". Since CA's cod
 | `pluginDupe()` | ✅ | 2 tests |
 | `makeXML()` | ✅ | 5 tests |
 | `languageCheck()` | ✅ | 2 tests |
+| `ca_plugin()` | ✅ | 3 tests |
+| `checkPluginUpdate()` | ✅ | 2 tests |
+| `checkInstalledPlugin()` | ✅ | 2 tests |
+| `checkServerDate()` | ✅ | 3 tests |
 
 ### Tier 3: File I/O Functions ✅ COMPLETE
 | Function | Status | Tests |
@@ -110,15 +114,15 @@ Require full Unraid environment (Docker, filesystem state, HTTP context):
 | `isMobile()` | ✅ | 5 tests |
 | `languageCheck()` | ✅ | 2 tests |
 | `isTailScaleInstalled()` | ✅ | 3 tests |
+| `ca_plugin()` | ✅ | 3 tests |
+| `checkPluginUpdate()` | ✅ | 2 tests |
+| `checkInstalledPlugin()` | ✅ | 2 tests |
+| `checkServerDate()` | ✅ | 3 tests |
 
 ### helpers.php - CANNOT Unit Test (Missing Mocks) ❌
 
 | Function | Blocker | Requires |
 |----------|---------|----------|
-| `ca_plugin()` | Uses `plugin()` | Add `plugin()` mock to framework |
-| `checkPluginUpdate()` | Uses `ca_plugin()` | Depends on `plugin()` mock |
-| `checkInstalledPlugin()` | Uses `ca_plugin()` | Depends on `plugin()` mock |
-| `checkServerDate()` | Uses `plugin()` | Add `plugin()` mock to framework |
 | `getAllInfo()` | Uses `$DockerTemplates`, `$DockerClient` | DockerMock integration |
 | `debug()` | Uses `$_SESSION`, `shell_exec()` | Session mock, exec mock |
 | `postReturn()` | HTTP headers, output buffering | Integration test |

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CommunityApplications\Tests;
 
 use PHPUnit\Framework\TestCase;
+use PluginTests\Mocks\FunctionMocks;
 
 /**
  * Tests for CA functions that require globals and mocked system state
@@ -24,6 +25,13 @@ class GlobalsTest extends TestCase
             require_once '/usr/local/emhttp/plugins/community.applications/include/helpers.php';
             self::$helpersLoaded = true;
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Reset function mocks between tests
+        FunctionMocks::reset();
     }
 
     // =====================================================
@@ -548,5 +556,162 @@ class GlobalsTest extends TestCase
         @unlink($caPaths['community-templates-info']);
         @unlink($caPaths['pluginDupes']);
         unset($GLOBALS['templates']);
+    }
+
+    // =====================================================
+    // Tests for ca_plugin() - with plugin() mock
+    // =====================================================
+
+    public function testCaPluginReturnsChanges(): void
+    {
+        // 'changes' is a PLUGIN_METHOD, so it calls plugin() directly
+        \PluginTests\Mocks\FunctionMocks::setPluginCommandOutput('changes', '/var/log/plugins/test.plg', "<b>Version 1.0</b>\n- Bug fix");
+        
+        $result = \ca_plugin('changes', '/var/log/plugins/test.plg');
+        
+        // strip_tags and html_entity_decode should clean the output
+        $this->assertStringContainsString('Version 1.0', $result);
+        $this->assertStringNotContainsString('<b>', $result);
+    }
+
+    public function testCaPluginReturnsAttributeFromXml(): void
+    {
+        global $caPaths;
+        
+        // Create a plugin XML file for attribute caching
+        @mkdir('/var/log/plugins', 0777, true);
+        $xml = '<?xml version="1.0" ?><PLUGIN version="2024.01.15" name="Test Plugin" pluginURL="https://example.com/test.plg"></PLUGIN>';
+        file_put_contents('/var/log/plugins/test.plg', $xml);
+        
+        // Ensure attribute cache is clear
+        @unlink($caPaths['pluginAttributesCache']);
+        
+        // ca_plugin with non-method attribute reads from XML
+        $result = \ca_plugin('version', '/var/log/plugins/test.plg');
+        
+        $this->assertEquals('2024.01.15', $result);
+        
+        // Cleanup
+        @unlink('/var/log/plugins/test.plg');
+        @unlink($caPaths['pluginAttributesCache']);
+    }
+
+    public function testCaPluginReturnsFalseForMissingPlugin(): void
+    {
+        global $caPaths;
+        @unlink($caPaths['pluginAttributesCache']);
+        
+        // File doesn't exist, should return false
+        $result = \ca_plugin('version', '/var/log/plugins/nonexistent.plg');
+        
+        $this->assertFalse($result);
+    }
+
+    // =====================================================
+    // Tests for checkPluginUpdate()
+    // =====================================================
+
+    public function testCheckPluginUpdateReturnsFalseWhenNotInstalled(): void
+    {
+        // Plugin not installed (file doesn't exist)
+        $result = \checkPluginUpdate('nonexistent.plg');
+        
+        $this->assertFalse($result);
+    }
+
+    public function testCheckPluginUpdateReturnsFalseWhenNoUpgrade(): void
+    {
+        global $caSettings;
+        $caSettings['unRaidVersion'] = '7.0.0';
+        
+        // Create installed plugin file
+        @mkdir('/var/log/plugins', 0777, true);
+        file_put_contents('/var/log/plugins/test.plg', '<?xml version="1.0" ?><PLUGIN version="2024.01.15"></PLUGIN>');
+        
+        // No upgrade available (no /tmp/plugins file)
+        $result = \checkPluginUpdate('test.plg');
+        
+        $this->assertFalse($result);
+        
+        // Cleanup
+        @unlink('/var/log/plugins/test.plg');
+    }
+
+    // =====================================================
+    // Tests for checkInstalledPlugin()
+    // =====================================================
+
+    public function testCheckInstalledPluginReturnsFalseWhenNotInstalled(): void
+    {
+        $template = [
+            'PluginURL' => 'https://example.com/test.plg',
+        ];
+        
+        // Plugin file doesn't exist
+        $result = \checkInstalledPlugin($template);
+        
+        $this->assertFalse($result);
+    }
+
+    public function testCheckInstalledPluginReturnsFalseWithHideFromCA(): void
+    {
+        // Even if installed, hideFromCA returns false
+        @mkdir('/var/log/plugins', 0777, true);
+        file_put_contents('/var/log/plugins/test.plg', '<?xml version="1.0" ?><PLUGIN></PLUGIN>');
+        
+        $template = [
+            'PluginURL' => 'https://example.com/test.plg',
+            'hideFromCA' => true,
+        ];
+        
+        $result = \checkInstalledPlugin($template);
+        
+        $this->assertFalse($result);
+        
+        // Cleanup
+        @unlink('/var/log/plugins/test.plg');
+    }
+
+    // =====================================================
+    // Tests for checkServerDate()
+    // =====================================================
+
+    public function testCheckServerDateReturnsTrueWhenDateCorrect(): void
+    {
+        // Mock the plugin version (CA uses this to check server date)
+        // checkServerDate() calls plugin() directly (not ca_plugin())
+        \PluginTests\Mocks\FunctionMocks::setPluginAttributes('/var/log/plugins/community.applications.plg', [
+            'version' => '2026.02.04',
+        ]);
+        
+        $result = \checkServerDate();
+        
+        // Current date is Feb 4, 2026, CA version is 2026.02.04
+        // Difference should be 0 days, which is < 30 days
+        $this->assertTrue($result);
+    }
+
+    public function testCheckServerDateReturnsFalseWhenServerDateTooOld(): void
+    {
+        // Mock a future CA version to simulate server date being too old
+        // If CA version is 60 days in the future, server's date must be wrong
+        \PluginTests\Mocks\FunctionMocks::setPluginAttributes('/var/log/plugins/community.applications.plg', [
+            'version' => '2026.04.15',  // ~70 days in future from Feb 4
+        ]);
+        
+        $result = \checkServerDate();
+        
+        // If server thinks it's Feb 4 but CA version says April 15 (>30 days in future)
+        // Then server date is wrong - returns false
+        $this->assertFalse($result);
+    }
+
+    public function testCheckServerDateReturnsTrueWhenNoCaVersion(): void
+    {
+        // No plugin attributes set means version returns false
+        $result = \checkServerDate();
+        
+        // When no CA version found, returns true (can't check)
+        $this->assertTrue($result);
     }
 }
